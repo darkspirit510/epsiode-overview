@@ -1,0 +1,28 @@
+# Blacklist configuration for Episode Overview
+# This file controls which series and seasons are displayed in the table
+#
+# Format:
+# blacklist {
+#   # Series to completely exclude (don't render at all)
+#   full = ["Series Name 1", "Series Name 2"]
+#   
+#   # Series with specific seasons to exclude
+#   series = {
+#     "Series Name" = ["S01", "02"]  # Both SXX and XX formats supported
+#     "Another Series" = ["S12", "S34"]
+#   }
+# }
+
+blacklist {
+  # Example: Completely exclude these series from the table
+  # Add dummy series names that you want to completely hide
+  full = ["Dummy Series One", "Dummy Series Two"]
+  
+  # Example: Exclude specific seasons from these series
+  # Add dummy series names with specific seasons to exclude
+  series = {
+    "Dummy Series Three" = ["S01", "S02"]
+    "Dummy Series Four" = ["S03", "S04"]
+    "Dummy Series Five" = ["S05"]
+  }
+}

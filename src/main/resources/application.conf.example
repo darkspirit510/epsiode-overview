@@ -1,0 +1,19 @@
+# Base directory to scan for media files
+# This should point to your media library root directory
+baseDir = "/path/to/your/media/"
+
+# Subdirectories to scan within baseDir
+# Add the folder names that contain your series
+subDirs = ["Series", "Anime", "TV Shows"]
+
+# TheMovieDB API Key (v3 auth)
+# Generate at: https://www.themoviedb.org/settings/api
+# Use the "API Key (v3 auth)" field, NOT the "API Read Access Token"
+# This should be a simple alphanumeric string (e.g., aaaabbbccc111222333444555666777888999)
+tmdbApiToken = "your_tmdb_api_key_here"
+
+# TheMovieDB API base URL
+tmdbBaseUrl = "https://api.themoviedb.org/3"
+
+# Maximum number of episodes per season to display
+maxEpisodesPerSeason = 75

@@ -1,0 +1,77 @@
+# Gradle
+build/
+gradle/
+.gradle/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# macOS
+.DS_Store
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Test results
+*/test-results/
+*/build/reports/
+*/build/test-results/
+
+# Distribution files
+*/build/distributions/
+
+# Cache
+cache/
+*.cache
+
+# Run configurations
+.run/
+*.run.xml
+
+# Shell scripts
+run.sh
+
+# Local properties
+local.properties
+
+# Kotlin
+*.kt.orig
+*.java.orig
+
+# IntelliJ
+*.iml
+.idea/
+out/
+
+# Gradle wrapper (optional - if you want to ignore the wrapper)
+# gradlew
+# gradlew.bat
+# gradle-wrapper.jar
+
+# Application configuration files
+application.conf
+blacklist.conf
+overwrite.conf
+
+# Logback configuration (optional)
+# logback.xml
+
+cache/*

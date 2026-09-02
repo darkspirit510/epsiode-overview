@@ -1,0 +1,15 @@
+# Manual TMDB ID overrides
+# Format: Series Name:TheMovieDB ID
+# Example: Avatar:12345
+
+# Add your custom TMDB ID mappings here
+# This is useful when the automatic matching doesn't find the correct series
+# Example entries (using dummy series names):
+# My Favorite Show:12345
+# Another Series:67890
+# The Great Adventure:11111
+
+# Example with dummy series names:
+Example Series Alpha:11111
+Example Series Beta:22222
+Example Series Gamma:33333
