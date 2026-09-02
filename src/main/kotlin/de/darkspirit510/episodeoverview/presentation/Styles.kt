@@ -66,5 +66,21 @@ object Styles {
             visibility: visible;
             opacity: 1;
         }
+        .episode-cell.matched {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .episode-cell.name-mismatch {
+            background-color: #FFEB3B;
+            color: black;
+        }
+        .episode-cell.filesystem-only {
+            background-color: #9C27B0;
+            color: black;
+        }
+        .episode-cell.tmdb-only {
+            background-color: #F44336;
+            color: black;
+        }
     """
 }

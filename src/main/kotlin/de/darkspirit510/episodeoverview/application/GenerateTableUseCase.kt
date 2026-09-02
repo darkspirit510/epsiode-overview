@@ -36,7 +36,7 @@ class GenerateTableUseCase(
              }
          }
 
-           val tmdbCacheDir = java.io.File(System.getProperty("java.io.tmpdir"), "episodeoverview-test-cache/tmdb")
+            val tmdbCacheDir = java.io.File("cache/tmdb")
           tmdbCacheDir.listFiles()?.sortedBy { file ->
              // Sort files so that filesystem name versions (without special chars like ?,!) come first
              val fileNameParts = file.nameWithoutExtension.split("-", limit = 2)
