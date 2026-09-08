@@ -1,5 +1,6 @@
 package de.darkspirit510.episodeoverview.presentation
 
+import de.darkspirit510.episodeoverview.application.GenerateRenameCommandsUseCase
 import de.darkspirit510.episodeoverview.application.GenerateTableUseCase
 import de.darkspirit510.episodeoverview.application.RefreshUseCase
 import de.darkspirit510.episodeoverview.infrastructure.CacheManager
@@ -60,7 +61,7 @@ fun Application.module() {
         ?: classpathProps["tmdbBaseUrl"]
         ?: config.propertyOrNull("tmdbBaseUrl")?.getString() 
         ?: "https://api.themoviedb.org/3"
-
+    
     val maxEpisodesPerSeason = System.getenv("MAX_EPISODES_PER_SEASON")
         ?.toIntOrNull()
         ?: classpathProps["maxEpisodesPerSeason"]?.toIntOrNull()
@@ -73,6 +74,7 @@ fun Application.module() {
 
     val refreshUseCase = RefreshUseCase(fileSystemScanner, tmdbClient, cacheManager, baseDir, subDirs)
     val generateTableUseCase = GenerateTableUseCase(cacheManager)
+    val generateRenameCommandsUseCase = GenerateRenameCommandsUseCase(cacheManager)
     val htmlGenerator = HtmlGenerator(maxEpisodesPerSeason)
 
     routing {
@@ -106,6 +108,25 @@ fun Application.module() {
                 call.respondText(html, contentType = ContentType.Text.Html)
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.InternalServerError, "Table generation failed: ${e.message}")
+            }
+        }
+
+        get("/rename-commands") {
+            try {
+                val series = call.request.queryParameters["series"]
+                val season = call.request.queryParameters["season"]?.toIntOrNull()
+                
+                if (series == null || season == null) {
+                    call.respond(HttpStatusCode.BadRequest, "Missing series or season parameter")
+                    return@get
+                }
+                
+                val result = generateRenameCommandsUseCase.generateRenameCommands(series, season)
+                val commands = generateRenameCommandsUseCase.formatAsShellCommands(result)
+                
+                call.respondText(commands, contentType = ContentType.Text.Plain)
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, "Failed to generate rename commands: ${e.message}")
             }
         }
 

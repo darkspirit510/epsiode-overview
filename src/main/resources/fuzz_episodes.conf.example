@@ -1,0 +1,7 @@
+# Series that should use episode fuzzing (season split detection)
+# One series name per line
+# This is useful for anime where TMDB uses different season organization than the filesystem
+#
+# Example format:
+# AnimeSeries
+# AnotherAnime

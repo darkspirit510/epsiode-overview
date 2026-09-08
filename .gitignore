@@ -70,6 +70,7 @@ out/
 application.conf
 blacklist.conf
 overwrite.conf
+fuzz_episodes.conf
 
 # Logback configuration (optional)
 # logback.xml

@@ -5,8 +5,11 @@ import de.darkspirit510.episodeoverview.domain.EpisodeStatus
 import de.darkspirit510.episodeoverview.domain.ScannedEpisode
 import de.darkspirit510.episodeoverview.domain.Season
 import de.darkspirit510.episodeoverview.domain.Series
+import de.darkspirit510.episodeoverview.domain.SeriesCutPoints
+import de.darkspirit510.episodeoverview.domain.SeasonCutPoint
 import de.darkspirit510.episodeoverview.domain.TmdbEpisode
 import de.darkspirit510.episodeoverview.infrastructure.CacheManagerInterface
+import de.darkspirit510.episodeoverview.infrastructure.FuzzEpisodesConfig
 
 class GenerateTableUseCase(
     private val cacheManager: CacheManagerInterface
@@ -36,7 +39,9 @@ class GenerateTableUseCase(
              }
          }
 
-            val tmdbCacheDir = java.io.File("cache/tmdb")
+             // Use temp directory if specified for tests, otherwise use real cache
+             val cacheBaseDir = System.getProperty("episodeoverview.cache.dir", "cache")
+             val tmdbCacheDir = java.io.File("$cacheBaseDir/tmdb")
           tmdbCacheDir.listFiles()?.sortedBy { file ->
              // Sort files so that filesystem name versions (without special chars like ?,!) come first
              val fileNameParts = file.nameWithoutExtension.split("-", limit = 2)
@@ -55,8 +60,8 @@ class GenerateTableUseCase(
              
              val tmdbSeries = cacheManager.loadTmdbSeries(seriesId) ?: return@forEach
              
-             // Use filesystem name from filename if available, otherwise use TMDB name
-             val seriesNameToUse = filesystemNameFromFile ?: tmdbSeries.name
+              // Use filesystem name from filename if available, otherwise use TMDB name
+              val seriesNameToUse = filesystemNameFromFile ?: tmdbSeries.name ?: ""
              val normalizedSeriesName = normalizeSeriesName(seriesNameToUse)
              
              // Keep the original name for display if we don't have a filesystem name yet
@@ -77,13 +82,23 @@ class GenerateTableUseCase(
              val displayName = seriesDisplayNames[normalizedSeriesName] ?: normalizedSeriesName
              val subDir = seriesToSubDir[displayName] ?: "Unknown"
              
-             // Check if series is fully blacklisted
-             if (cacheManager.isSeriesBlacklisted(displayName)) {
-                 return@forEach
-             }
-             
-               // Get all season numbers from both filesystem and TMDB, excluding season 0 (S00)
-               val allSeasonNumbers = (seriesData.seasons.keys + seriesData.tmdbSeasons.keys).filter { it != 0 }.sorted()
+              // Check if series is fully blacklisted
+              if (cacheManager.isSeriesBlacklisted(displayName)) {
+                  return@forEach
+              }
+              
+              // Check if this series should use episode fuzzing (season split detection)
+              // Try both display name and normalized name since series can come from different sources
+              val useFuzzing = FuzzEpisodesConfig.shouldFuzzSeries(displayName) || 
+                               FuzzEpisodesConfig.shouldFuzzSeries(normalizedSeriesName)
+              val cutPoints = if (useFuzzing) {
+                  detectCutPoints(displayName, seriesData.seasons, seriesData.tmdbSeasons)
+              } else {
+                  SeriesCutPoints(displayName, emptyList())
+              }
+              
+                // Get all season numbers from both filesystem and TMDB, excluding season 0 (S00)
+                val allSeasonNumbers = (seriesData.seasons.keys + seriesData.tmdbSeasons.keys).filter { it != 0 }.sorted()
 
                val seriesRows = allSeasonNumbers.flatMap { seasonNumber ->
                    // Check if season is blacklisted
@@ -91,48 +106,65 @@ class GenerateTableUseCase(
                        return@flatMap listOf()
                    }
                   
-                  val filesystemEpisodes = seriesData.seasons[seasonNumber] ?: emptyMap()
-                  val tmdbEpisodes = seriesData.tmdbSeasons[seasonNumber] ?: emptyMap()
-                  val allEpisodeNumbers = (filesystemEpisodes.keys + tmdbEpisodes.keys).sorted()
+                   val filesystemEpisodes = seriesData.seasons[seasonNumber] ?: emptyMap()
+                   
+                   // Apply cut points if fuzzing is enabled for this series
+                   val tmdbEpisodes = seriesData.tmdbSeasons[seasonNumber] ?: emptyMap()
+                   val filteredTmdbEpisodes = if (useFuzzing) {
+                       val cutPoint = cutPoints.getCutPoint(seasonNumber)
+                       if (cutPoint != null) {
+                           tmdbEpisodes.filterKeys { it <= cutPoint }
+                       } else {
+                           tmdbEpisodes
+                       }
+                   } else {
+                       tmdbEpisodes
+                   }
+                   
+                    val allEpisodeNumbers = (filesystemEpisodes.keys + filteredTmdbEpisodes.keys).sorted()
 
-                  if (allEpisodeNumbers.isEmpty()) return@flatMap listOf()
+                   if (allEpisodeNumbers.isEmpty()) return@flatMap listOf()
 
-                  val episodes = allEpisodeNumbers.map { episodeNumber ->
-                      val filesystemEpisode = filesystemEpisodes[episodeNumber]
-                      val tmdbEpisode = tmdbEpisodes[episodeNumber]
+                   val episodes = allEpisodeNumbers.map { episodeNumber ->
+                       val filesystemEpisode = filesystemEpisodes[episodeNumber]
+                       // Use filtered TMDB episodes to exclude episodes beyond cut point
+                       val tmdbEpisode = filteredTmdbEpisodes[episodeNumber]
 
-                       when {
-                           filesystemEpisode != null && tmdbEpisode != null -> {
-                               // Extract name from filename by removing SXXEYY pattern, file extension, and any leading/trailing separators
-                               val fileNameWithoutPattern = filesystemEpisode.fileName
-                                   .replace(Regex("S\\d+E\\d+"), "")
-                                   .replace(Regex("^[\\s-]+"), "")
-                                   .replace(Regex("\\.[^.]*$"), "")  // Remove file extension
-                                   .replace(Regex("[\\s-]+"), " ")  // Replace multiple separators with single space
-                                   .trim()
-                                val normFs = normalizeForComparison(fileNameWithoutPattern)
-                                val normTmdb = normalizeForComparison(tmdbEpisode.name)
-                                val status = if (normFs.equals(normTmdb, ignoreCase = true)) {
-                                    EpisodeStatus.MATCHED
-                                } else {
-                                    // Fallback: try comparing without spaces
-                                    val normFsNoSpaces = normFs.replace(Regex("\\s"), "")
-                                    val normTmdbNoSpaces = normTmdb.replace(Regex("\\s"), "")
-                                    if (normFsNoSpaces.equals(normTmdbNoSpaces, ignoreCase = true)) {
-                                        EpisodeStatus.MATCHED
-                                    } else {
-                                        EpisodeStatus.NAME_MISMATCH
-                                    }
-                                }
-                               EpisodeTableCell(episodeNumber, status, filesystemEpisode.fileName, tmdbEpisode.name)
-                          }
-                          filesystemEpisode != null -> {
-                              EpisodeTableCell(episodeNumber, EpisodeStatus.FILESYSTEM_ONLY, filesystemEpisode.fileName, null)
-                          }
-                          else -> {
-                              EpisodeTableCell(episodeNumber, EpisodeStatus.TMDB_ONLY, null, tmdbEpisode?.name)
-                          }
-                      }
+                        when {
+                            filesystemEpisode != null && tmdbEpisode != null -> {
+                                // Extract name from filename by removing SXXEYY pattern, file extension, and any leading/trailing separators
+                                val fileNameWithoutPattern = filesystemEpisode.fileName
+                                    .replace(Regex("S\\d+E\\d+"), "")
+                                    .replace(Regex("^[\\s-]+"), "")
+                                    .replace(Regex("\\.[^.]*$"), "")  // Remove file extension
+                                    .replace(Regex("[\\s-]+"), " ")  // Replace multiple separators with single space
+                                    .trim()
+                                 val normFs = normalizeForComparison(fileNameWithoutPattern)
+                                 val normTmdb = normalizeForComparison(tmdbEpisode.name)
+                                 val status = if (normFs.equals(normTmdb, ignoreCase = true)) {
+                                     EpisodeStatus.MATCHED
+                                 } else {
+                                     // Fallback: try comparing without spaces
+                                     val normFsNoSpaces = normFs.replace(Regex("\\s"), "")
+                                     val normTmdbNoSpaces = normTmdb.replace(Regex("\\s"), "")
+                                     if (normFsNoSpaces.equals(normTmdbNoSpaces, ignoreCase = true)) {
+                                         EpisodeStatus.MATCHED
+                                     } else {
+                                         EpisodeStatus.NAME_MISMATCH
+                                     }
+                                 }
+                                EpisodeTableCell(episodeNumber, status, filesystemEpisode.fileName, tmdbEpisode.name)
+                           }
+                           filesystemEpisode != null -> {
+                               // For Option A (fuzzing enabled): filesystem episodes without TMDB matches are considered MATCHED
+                               // because we prefer filesystem structure and hide TMDB episodes beyond cut points
+                               val status = if (useFuzzing) EpisodeStatus.MATCHED else EpisodeStatus.FILESYSTEM_ONLY
+                               EpisodeTableCell(episodeNumber, status, filesystemEpisode.fileName, null)
+                           }
+                           else -> {
+                               EpisodeTableCell(episodeNumber, EpisodeStatus.TMDB_ONLY, null, tmdbEpisode?.name)
+                           }
+                       }
                   }
 
                    listOf(SeriesTableRow(displayName, seasonNumber, episodes, allEpisodeNumbers.size))
@@ -260,7 +292,100 @@ class GenerateTableUseCase(
              .replace("X\\b".toRegex(), "10")  // Roman X → 10
              .trim()
              .lowercase()  // Ensure case-insensitive comparison
-     }
+      }
+
+    /**
+     * Detects cut points where TMDB seasons should be truncated to match filesystem structure.
+     * Only used when series is in the fuzz_episodes configuration file.
+     */
+    private fun detectCutPoints(
+        seriesName: String,
+        filesystemSeasons: Map<Int, Map<Int, ScannedEpisode>>,
+        tmdbSeasons: Map<Int, Map<Int, TmdbEpisode>>
+    ): SeriesCutPoints {
+        val cutPoints = mutableListOf<SeasonCutPoint>()
+        
+        if (filesystemSeasons.isEmpty() || tmdbSeasons.isEmpty()) {
+            return SeriesCutPoints(seriesName, cutPoints)
+        }
+        
+        tmdbSeasons.forEach { (tmdbSeason, tmdbEpisodesMap) ->
+            val tmdbEpisodes = tmdbEpisodesMap.values.sortedBy { it.episodeNumber }
+            var cutAtEpisode: Int? = null
+            
+            for (tmdbEpisodeData in tmdbEpisodes) {
+                val tmdbName = tmdbEpisodeData.name
+                
+                for ((fsSeason, fsEpisodesMap) in filesystemSeasons) {
+                    for ((fsEpisode, fsData) in fsEpisodesMap) {
+                        val fsName = (fsData.episodeName ?: extractNameFromFilename(fsData.fileName))
+                            .replace(Regex("\\.[^.]*$"), "")
+                            .trim()
+                        
+                        if (areNamesMatching(fsName, tmdbName)) {
+                            if (fsSeason != tmdbSeason) {
+                                // Cross-season match found
+                                // For Option A: cut at the EARLIEST TMDB episode that has a cross-season match
+                                // This means we keep all TMDB episodes before the first filesystem split
+                                val potentialCut = tmdbEpisodeData.episodeNumber - 1
+                                cutAtEpisode = if (cutAtEpisode == null) {
+                                    potentialCut  // First match found
+                                } else {
+                                    minOf(cutAtEpisode, potentialCut)  // Keep the earliest cut point
+                                }
+                            }
+                            break
+                        }
+                    }
+                }
+            }
+            
+            if (cutAtEpisode != null) {
+                cutPoints.add(SeasonCutPoint(tmdbSeason, cutAtEpisode))
+            }
+        }
+        
+        return SeriesCutPoints(seriesName, cutPoints)
+    }
+
+    /**
+     * Extract episode name from filename by removing SXXEYY pattern and extension
+     */
+    private fun extractNameFromFilename(filename: String): String {
+        return filename
+            .replace(Regex("S\\d+E\\d+"), "")
+            .replace(Regex("^[\\s-]+"), "")
+            .replace(Regex("\\.[^.]*$"), "")
+            .replace(Regex("[\\s-]+"), " ")
+            .trim()
+    }
+
+    /**
+     * Check if two episode names match using a simpler normalization that preserves numbers
+     */
+    private fun areNamesMatching(name1: String, name2: String): Boolean {
+        if (name1.isEmpty() || name2.isEmpty()) return false
+        
+        val norm1 = normalizeForSeasonSplit(name1)
+        val norm2 = normalizeForSeasonSplit(name2)
+        
+        return norm1.equals(norm2, ignoreCase = true) ||
+               norm1.replace(Regex("\\s"), "").equals(norm2.replace(Regex("\\s"), ""), ignoreCase = true)
+    }
+
+    /**
+     * Simpler normalization for season split detection that preserves episode numbers
+     */
+    private fun normalizeForSeasonSplit(name: String): String {
+        return name
+            .replace("&", "und")
+            .replace("\\", " ")
+            .replace("/", " ")
+            .replace("#", "")
+            .replace(Regex("[\\s-]+"), " ")
+            .trim()
+            .lowercase()
+    }
 
     sealed class TableRow
     
