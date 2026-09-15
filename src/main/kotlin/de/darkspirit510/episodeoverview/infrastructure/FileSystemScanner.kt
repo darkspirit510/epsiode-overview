@@ -111,28 +111,59 @@ class FileSystemScanner {
     }
 
      internal fun extractEpisodeInfo(fileName: String): ScannedEpisode? {
-         val pattern = Regex("S(\\d+)E(\\d+)(E\\d+|-E\\d+)?")
-         val match = pattern.find(fileName) ?: return null
+          val pattern = Regex("S(\\d+)E(\\d+)(E\\d+|-E\\d+)*")
+          val match = pattern.find(fileName) ?: return null
 
-         val seasonNumber = match.groupValues[1].toInt()
-         // Skip season 0 (S00) - specials/extras
-         if (seasonNumber == 0) return null
-         
-         val episodeNumber = match.groupValues[2].toInt()
-         
-         // Extract episode name by finding " - " after the full episode pattern match
-         val afterEpisode = fileName.substring(match.range.last + 1)
-         val episodeName = if (afterEpisode.trim().startsWith("-")) {
-             afterEpisode.trim().substring(1).trim()
-         } else {
-             null
-         }
+          val seasonNumber = match.groupValues[1].toInt()
+          // Skip season 0 (S00) - specials/extras
+          if (seasonNumber == 0) return null
+          
+          // Parse all episode numbers from the matched pattern
+          val episodeNumbers = extractAllEpisodeNumbers(match.value)
+          val episodeNumber = episodeNumbers.firstOrNull() ?: return null
+          
+          // Extract episode name by finding " - " after the full episode pattern match
+          val afterEpisode = fileName.substring(match.range.last + 1)
+          val episodeName = if (afterEpisode.trim().startsWith("-")) {
+              afterEpisode.trim().substring(1).trim()
+          } else {
+              null
+          }
 
-         return ScannedEpisode(
-             seasonNumber = seasonNumber,
-             episodeNumber = episodeNumber,
-             fileName = fileName,
-             episodeName = episodeName
-         )
-     }
+          return ScannedEpisode(
+              seasonNumber = seasonNumber,
+              episodeNumber = episodeNumber,
+              episodeNumbers = episodeNumbers,
+              fileName = fileName,
+              episodeName = episodeName
+          )
+      }
+
+      private fun extractAllEpisodeNumbers(episodePattern: String): List<Int> {
+          // Find all E followed by digits in the episode pattern
+          val episodeNumberPattern = Regex("E(\\d+)")
+          val matches = episodeNumberPattern.findAll(episodePattern)
+          
+          // If we only found one episode number, check if it contains multiple episode numbers
+          // concatenated together (e.g., E0102 should be split into E01 and E02)
+          val episodeNumbers = if (matches.count() == 1) {
+              val episodeDigits = matches.first().groupValues[1]
+              splitConcatenatedEpisodes(episodeDigits)
+          } else {
+              matches.map { it.groupValues[1].toInt() }.toList()
+          }
+          
+          return episodeNumbers
+      }
+
+      private fun splitConcatenatedEpisodes(episodeDigits: String): List<Int> {
+          // If the episode digits have an even number of characters, try to split them
+          // into pairs (e.g., "0102" -> ["01", "02"] -> [1, 2])
+          if (episodeDigits.length % 2 == 0) {
+              val chunks = episodeDigits.chunked(2)
+              return chunks.mapNotNull { it.toIntOrNull() }.toList()
+          }
+          // Otherwise, return as a single episode number
+          return listOf(episodeDigits.toIntOrNull() ?: 0)
+      }
 }

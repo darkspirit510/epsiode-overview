@@ -8,12 +8,16 @@ fun createTestCacheManager(
     scannedEpisodes: Map<String, List<ScannedEpisode>> = emptyMap(),
     tmdbSeries: Map<Int, TmdbSeries> = emptyMap(),
     blacklistedSeries: Set<String> = emptySet(),
-    blacklistedSeasons: Map<String, Set<Int>> = emptyMap()
+    blacklistedSeasons: Map<String, Set<Int>> = emptyMap(),
+    overriddenEpisodes: Map<String, Map<Int, Set<Int>>> = emptyMap()
 ): CacheManagerInterface {
     // Create TMDB cache files in a temporary directory for testing
     // NEVER write to the real cache directory
     val tempCacheDir = File(System.getProperty("java.io.tmpdir"), "episodeoverview-test-cache")
     val tmdbCacheDir = File(tempCacheDir, "tmdb")
+    
+    // Clean up the temp directory to avoid interference from previous tests
+    tempCacheDir.deleteRecursively()
     tmdbCacheDir.mkdirs()
     
     // Set system property so GenerateTableUseCase uses the temp directory
@@ -36,6 +40,8 @@ fun createTestCacheManager(
         override fun isSeriesBlacklisted(seriesName: String): Boolean = blacklistedSeries.contains(seriesName)
         override fun isSeasonBlacklisted(seriesName: String, seasonNumber: Int): Boolean =
             blacklistedSeasons[seriesName]?.contains(seasonNumber) ?: false
+        override fun isEpisodeOverridden(seriesName: String, seasonNumber: Int, episodeNumber: Int): Boolean =
+            overriddenEpisodes[seriesName]?.get(seasonNumber)?.contains(episodeNumber) ?: false
         
         // Override other methods to prevent file system operations during tests
         override fun saveScannedEpisodes(seriesName: String, episodes: List<ScannedEpisode>) {}

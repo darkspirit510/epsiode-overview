@@ -49,15 +49,26 @@ class GenerateRenameCommandsUseCase(
         val tmdbEpisodeMap = tmdbEpisodes.associateBy { it.episodeNumber }
         
         for (fsEpisode in filesystemEpisodes) {
-            val tmdbEpisode = tmdbEpisodeMap[fsEpisode.episodeNumber]
+            // Handle multiple episode numbers in a single file
+            val episodeNumbers = if (fsEpisode.episodeNumbers.size > 1) {
+                fsEpisode.episodeNumbers
+            } else {
+                listOf(fsEpisode.episodeNumber)
+            }
             
-            if (tmdbEpisode != null) {
-                val fsName = extractNameFromFilename(fsEpisode.fileName)
-                val tmdbName = tmdbEpisode.name
+            for (episodeNumber in episodeNumbers) {
+                val tmdbEpisode = tmdbEpisodeMap[episodeNumber]
                 
-                if (!areNamesMatching(fsName, tmdbName)) {
-                    val newFileName = generateNewFileName(fsEpisode.fileName, tmdbEpisode, seasonNumber)
-                    commands.add(RenameCommand(fsEpisode.fileName, newFileName))
+                if (tmdbEpisode != null) {
+                    val fsName = extractNameFromFilename(fsEpisode.fileName)
+                    val tmdbName = tmdbEpisode.name
+                    
+                    if (!areNamesMatching(fsName, tmdbName)) {
+                        val newFileName = generateNewFileName(fsEpisode.fileName, tmdbEpisode, seasonNumber)
+                        commands.add(RenameCommand(fsEpisode.fileName, newFileName))
+                        // Only add one command per file, even if it matches multiple episodes
+                        break
+                    }
                 }
             }
         }

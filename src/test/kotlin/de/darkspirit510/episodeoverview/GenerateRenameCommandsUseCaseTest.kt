@@ -24,7 +24,7 @@ class GenerateRenameCommandsUseCaseTest {
                         fileName = "S01E02 - Unbenannt.mkv",
                         episodeName = null
                     ),
-                    ScannedEpisode(1, 3, "S01E03 - Correct Name.mkv", "Correct Name")
+                    ScannedEpisode(1, 3, listOf(3), "S01E03 - Correct Name.mkv", "Correct Name")
                 )
             ),
             tmdbSeries = mapOf(

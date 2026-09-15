@@ -131,39 +131,68 @@ class GenerateTableUseCase(
                        val tmdbEpisode = filteredTmdbEpisodes[episodeNumber]
 
                         when {
-                            filesystemEpisode != null && tmdbEpisode != null -> {
-                                // Extract name from filename by removing SXXEYY pattern, file extension, and any leading/trailing separators
-                                val fileNameWithoutPattern = filesystemEpisode.fileName
-                                    .replace(Regex("S\\d+E\\d+"), "")
-                                    .replace(Regex("^[\\s-]+"), "")
-                                    .replace(Regex("\\.[^.]*$"), "")  // Remove file extension
-                                    .replace(Regex("[\\s-]+"), " ")  // Replace multiple separators with single space
-                                    .trim()
-                                 val normFs = normalizeForComparison(fileNameWithoutPattern)
-                                 val normTmdb = normalizeForComparison(tmdbEpisode.name)
-                                 val status = if (normFs.equals(normTmdb, ignoreCase = true)) {
-                                     EpisodeStatus.MATCHED
-                                 } else {
-                                     // Fallback: try comparing without spaces
-                                     val normFsNoSpaces = normFs.replace(Regex("\\s"), "")
-                                     val normTmdbNoSpaces = normTmdb.replace(Regex("\\s"), "")
-                                     if (normFsNoSpaces.equals(normTmdbNoSpaces, ignoreCase = true)) {
-                                         EpisodeStatus.MATCHED
-                                     } else {
-                                         EpisodeStatus.NAME_MISMATCH
-                                     }
-                                 }
-                                EpisodeTableCell(episodeNumber, status, filesystemEpisode.fileName, tmdbEpisode.name)
-                           }
+                              filesystemEpisode != null && tmdbEpisode != null -> {
+                                  // Extract name from filename by removing SXXEYY pattern, file extension, and any leading/trailing separators
+                                  val fileNameWithoutPattern = filesystemEpisode.fileName
+                                      .replace(Regex("S\\d+E\\d+"), "")
+                                      .replace(Regex("^[\\s-]+"), "")
+                                      .replace(Regex("\\.[^.]*$"), "")  // Remove file extension
+                                      .replace(Regex("[\\s-]+"), " ")  // Replace multiple separators with single space
+                                      .trim()
+                                  
+                                  // Remove part suffixes from both names before normalization
+                                  val fsWithoutPart = removePartSuffix(fileNameWithoutPattern)
+                                  val tmdbWithoutPart = removePartSuffix(tmdbEpisode.name)
+                                  
+                                  val normFs = normalizeForComparison(fsWithoutPart)
+                                  val normTmdb = normalizeForComparison(tmdbWithoutPart)
+                                  
+                                  // Check if names match directly
+                                  val status = if (normFs.equals(normTmdb, ignoreCase = true)) {
+                                      EpisodeStatus.MATCHED
+                                  } else {
+                                      // Fallback: try comparing without spaces
+                                      val normFsNoSpaces = normFs.replace(Regex("\\s"), "")
+                                      val normTmdbNoSpaces = normTmdb.replace(Regex("\\s"), "")
+                                      if (normFsNoSpaces.equals(normTmdbNoSpaces, ignoreCase = true)) {
+                                          EpisodeStatus.MATCHED
+                                      } else {
+                                          EpisodeStatus.NAME_MISMATCH
+                                      }
+                                  }
+                                  EpisodeTableCell(episodeNumber, status, filesystemEpisode.fileName, tmdbEpisode.name)
+                             }
                            filesystemEpisode != null -> {
                                // For Option A (fuzzing enabled): filesystem episodes without TMDB matches are considered MATCHED
                                // because we prefer filesystem structure and hide TMDB episodes beyond cut points
                                val status = if (useFuzzing) EpisodeStatus.MATCHED else EpisodeStatus.FILESYSTEM_ONLY
                                EpisodeTableCell(episodeNumber, status, filesystemEpisode.fileName, null)
                            }
-                           else -> {
-                               EpisodeTableCell(episodeNumber, EpisodeStatus.TMDB_ONLY, null, tmdbEpisode?.name)
-                           }
+                            else -> {
+                                  // Check if any filesystem episode matches this TMDB episode (for multi-part episodes)
+                                  val tmdbWithoutPart = removePartSuffix(tmdbEpisode?.name ?: "")
+                                  val tmdbNormWithoutPart = normalizeForComparison(tmdbWithoutPart)
+                                  
+                                  val matchingFsEpisode = filesystemEpisodes.values.find { fsEp ->
+                                      val fsFileNameWithoutPattern = fsEp.fileName
+                                          .replace(Regex("S\\d+E\\d+"), "")
+                                          .replace(Regex("^[\\s-]+"), "")
+                                          .replace(Regex("\\.[^.]*$"), "")
+                                          .replace(Regex("[\\s-]+"), " ")
+                                          .trim()
+                                      val fsWithoutPart = removePartSuffix(fsFileNameWithoutPattern)
+                                      val fsNorm = normalizeForComparison(fsWithoutPart)
+                                      fsNorm.equals(tmdbNormWithoutPart, ignoreCase = true) ||
+                                      fsNorm.replace(Regex("\\s"), "").equals(tmdbNormWithoutPart.replace(Regex("\\s"), ""), ignoreCase = true)
+                                  }
+                                  
+                                  val status = if (matchingFsEpisode != null) {
+                                      EpisodeStatus.MATCHED
+                                  } else {
+                                      EpisodeStatus.TMDB_ONLY
+                                  }
+                                  EpisodeTableCell(episodeNumber, status, matchingFsEpisode?.fileName, tmdbEpisode?.name)
+                              }
                        }
                   }
 
@@ -374,8 +403,8 @@ class GenerateTableUseCase(
     }
 
     /**
-     * Simpler normalization for season split detection that preserves episode numbers
-     */
+      * Simpler normalization for season split detection that preserves episode numbers
+      */
     private fun normalizeForSeasonSplit(name: String): String {
         return name
             .replace("&", "und")
@@ -385,6 +414,16 @@ class GenerateTableUseCase(
             .replace(Regex("[\\s-]+"), " ")
             .trim()
             .lowercase()
+    }
+
+    /**
+     * Remove part suffixes like "(1)", "(2)", "Teil 1", "Teil 2" from episode names
+     */
+    private fun removePartSuffix(name: String): String {
+        return name
+            .replace(Regex("""\s*\\(\d+\\)\s*$"""), "")
+            .replace(Regex("""\s*Teil\s+\d+\s*$"""), "")
+            .trim()
     }
 
     sealed class TableRow

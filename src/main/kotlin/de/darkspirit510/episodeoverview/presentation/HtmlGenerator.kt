@@ -59,14 +59,13 @@ class HtmlGenerator(private val maxEpisodesPerSeason: Int = 75) {
                                  when (cell.status) {
                                      EpisodeStatus.NAME_MISMATCH -> {
                                           if (cell.filesystemName != null && cell.tmdbName != null) {
-                                              // Trim filesystem prefix (SXXEYY, space, dash, space) from filename
-                                               val trimmedFsName = cell.filesystemName
-                                                   .replace(Regex("^S\\d+E\\d+[\\s-]*"), "")
-                                                   .replace(Regex("[\\u2013\\u2014-]"), "")
-                                                   .replace(Regex("\\.[^.]*$"), "")
-                                              val escapedFsName = escapeHtml(trimmedFsName)
-                                           val trimmedTmdbName = cell.tmdbName.replace(Regex("[\\u2013\\u2014-]"), "")
-                                           val escapedTmdbName = escapeHtml(trimmedTmdbName)
+                                               // Trim filesystem prefix (SXXEYY, space, dash, space) from filename
+                                                val trimmedFsName = cell.filesystemName
+                                                    .replace(Regex("^S\\d+E\\d+[\\s-]*"), "")
+                                                    .replace(Regex("\\.[^.]*$"), "")
+                                               val escapedFsName = escapeHtml(trimmedFsName)
+                                            val trimmedTmdbName = cell.tmdbName
+                                            val escapedTmdbName = escapeHtml(trimmedTmdbName)
                                           """<td class="episode-cell $statusClass">
                                                  <div class="tooltip">$displayText
                                                      <div class="tooltiptext">F: $escapedFsName<br>T: $escapedTmdbName</div>

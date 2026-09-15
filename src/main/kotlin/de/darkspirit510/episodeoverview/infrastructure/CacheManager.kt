@@ -20,7 +20,8 @@ class CacheManager(
     // Blacklist configuration
     data class BlacklistConfig(
         val full: List<String> = emptyList(),
-        val series: Map<String, List<String>> = emptyMap()
+        val series: Map<String, List<String>> = emptyMap(),
+        val episodes: Map<String, Map<String, List<String>>> = emptyMap()
     )
 
     private var blacklist: BlacklistConfig = BlacklistConfig()
@@ -56,6 +57,9 @@ class CacheManager(
     private fun loadBlacklistFromStream(stream: java.io.InputStream) {
         val fullList = mutableListOf<String>()
         val seriesMap = mutableMapOf<String, MutableList<String>>()
+        val episodesMap = mutableMapOf<String, MutableMap<String, MutableList<String>>>()
+        var currentSection: String? = null
+        var currentSeries: String? = null
         
         stream.bufferedReader().forEachLine { line ->
             val trimmed = line.trim()
@@ -71,21 +75,63 @@ class CacheManager(
             
             // Match series = {
             if ("""series\s*=\s*\{""".toRegex().matches(trimmed)) {
+                currentSection = "series"
+                currentSeries = null
                 return@forEachLine
             }
             
-             // Match "Series Name" = ["S01", "02"]
+            // Match episodes = {
+            if ("""episodes\s*=\s*\{""".toRegex().matches(trimmed)) {
+                currentSection = "episodes"
+                currentSeries = null
+                return@forEachLine
+            }
+            
+            // Match closing brace for sections
+            if (trimmed == "}") {
+                if (currentSection == "episodes" && currentSeries != null) {
+                    currentSeries = null
+                } else {
+                    currentSection = null
+                    currentSeries = null
+                }
+                return@forEachLine
+            }
+            
+            // Match "Series Name" = ["S01", "02"] for series section
             val seriesMatch = """"([^"]+)"\s*=\s*\[(.*?)\]""".toRegex().find(trimmed)
-            if (seriesMatch != null) {
+            if (seriesMatch != null && currentSection == "series") {
                 val seriesName = seriesMatch.groupValues[1]
                 val content = seriesMatch.groupValues[2]
                 seriesMap.getOrPut(seriesName) { mutableListOf() }.addAll(parseArrayContent(content))
                 return@forEachLine
             }
+            
+            // Match "Series Name" = { for episodes section
+            val seriesStartMatch = """"([^"]+)"\s*=\s*\{""".toRegex().find(trimmed)
+            if (seriesStartMatch != null && currentSection == "episodes") {
+                val seriesName = seriesStartMatch.groupValues[1]
+                currentSeries = seriesName
+                episodesMap.getOrPut(seriesName) { mutableMapOf() }
+                return@forEachLine
+            }
+            
+            // Match "SXX" = ["E01", "E02"] for episodes section
+            val seasonMatch = """"(S\d+)"\s*=\s*\[(.*?)\]""".toRegex().find(trimmed)
+            if (seasonMatch != null && currentSection == "episodes" && currentSeries != null) {
+                val seasonKey = seasonMatch.groupValues[1]
+                val content = seasonMatch.groupValues[2]
+                val seriesEpisodes = episodesMap[currentSeries]
+                if (seriesEpisodes != null) {
+                    val seasonEpisodes = seriesEpisodes.getOrPut(seasonKey) { mutableListOf() }
+                    seasonEpisodes.addAll(parseArrayContent(content))
+                }
+                return@forEachLine
+            }
         }
         
-        blacklist = BlacklistConfig(fullList, seriesMap)
-        println("Loaded blacklist: full=$fullList, series=${seriesMap.keys}")
+        blacklist = BlacklistConfig(fullList, seriesMap, episodesMap)
+        println("Loaded blacklist: full=$fullList, series=${seriesMap.keys}, episodes=${episodesMap.keys}")
     }
     
     private fun parseArrayContent(content: String): List<String> {
@@ -118,6 +164,25 @@ class CacheManager(
                 blacklistSeason.equals(seasonStrNoPrefix, ignoreCase = true) ||
                 blacklistSeason.equals("S$seasonNumber", ignoreCase = true) ||
                 blacklistSeason.equals(seasonNumber.toString(), ignoreCase = true)
+            }
+        }
+    }
+
+    override fun isEpisodeOverridden(seriesName: String, seasonNumber: Int, episodeNumber: Int): Boolean {
+        val normalizedName = normalizeSeriesName(seriesName)
+        val seasonStr = "S${seasonNumber.toString().padStart(2, '0')}"
+        val episodeStr = "E${episodeNumber.toString().padStart(2, '0')}"
+        
+        // Check both original and normalized series names
+        val seriesNamesToCheck = listOf(seriesName, normalizedName)
+        
+        return blacklist.episodes.any { (blacklistSeries, seasons) ->
+            seriesNamesToCheck.any { name ->
+                name.equals(blacklistSeries, ignoreCase = true) || 
+                normalizeSeriesName(name).equals(normalizeSeriesName(blacklistSeries), ignoreCase = true)
+            } && seasons.any { (blacklistSeason, episodes) ->
+                blacklistSeason.equals(seasonStr, ignoreCase = true) &&
+                episodes.any { it.equals(episodeStr, ignoreCase = true) }
             }
         }
     }
