@@ -59,10 +59,10 @@ class HtmlGenerator(private val maxEpisodesPerSeason: Int = 75) {
                                  when (cell.status) {
                                      EpisodeStatus.NAME_MISMATCH -> {
                                           if (cell.filesystemName != null && cell.tmdbName != null) {
-                                               // Trim filesystem prefix (SXXEYY, space, dash, space) from filename
-                                                val trimmedFsName = cell.filesystemName
-                                                    .replace(Regex("^S\\d+E\\d+[\\s-]*"), "")
-                                                    .replace(Regex("\\.[^.]*$"), "")
+                                                // Trim filesystem prefix (SXXEYY, space, dash, space) from filename
+                                                 val trimmedFsName = cell.filesystemName
+                                                     .replace(Regex("^S\\d+E\\d+(E\\d+)*[\\s-]*"), "")
+                                                     .replace(Regex("\\.[^.]*$"), "")
                                                val escapedFsName = escapeHtml(trimmedFsName)
                                             val trimmedTmdbName = cell.tmdbName
                                             val escapedTmdbName = escapeHtml(trimmedTmdbName)

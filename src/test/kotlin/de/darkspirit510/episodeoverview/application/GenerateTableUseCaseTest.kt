@@ -205,16 +205,84 @@ class GenerateTableUseCaseTest {
         val series1Header = series1Headers[0]
         assertTrue(series1Header.seriesName.contains("Series1"))
         
-        // If we want to check the episodes, we need to disable the filtering
-        // For now, just verify that the series is marked as complete
-        // val seriesRows = result.filterIsInstance<GenerateTableUseCase.SeriesTableRow>()
-        //     .filter { it.seriesName == "Series1" }
-        // assertEquals(1, seriesRows.size)
-        // val episodes = seriesRows[0].episodes
-        // assertEquals(2, episodes.size)
-        // assertEquals(EpisodeStatus.MATCHED, episodes[0].status)
-        // assertEquals(EpisodeStatus.MATCHED, episodes[1].status)
+         // If we want to check the episodes, we need to disable the filtering
+         // For now, just verify that the series is marked as complete
+         // val seriesRows = result.filterIsInstance<GenerateTableUseCase.SeriesTableRow>()
+         //     .filter { it.seriesName == "Series1" }
+         // assertEquals(1, seriesRows.size)
+         // val episodes = seriesRows[0].episodes
+         // assertEquals(2, episodes.size)
+         // assertEquals(EpisodeStatus.MATCHED, episodes[0].status)
+         // assertEquals(EpisodeStatus.MATCHED, episodes[1].status)
+     }
+
+    @Test
+    fun `multi-episode file with part suffixes should match TMDB episodes with same base name`() {
+        val cacheManager = createTestCacheManager(
+            scannedEpisodes = mapOf(
+                "subdir/TestSeries" to listOf(
+                    ScannedEpisode(4, 10, listOf(10, 11), "S04E10E11 - Episode Title.mkv")
+                )
+            ),
+            tmdbSeries = mapOf(
+                99999 to TmdbSeries(
+                    id = 99999,
+                    name = "TestSeries",
+                    seasons = listOf(
+                        TmdbSeason(4, 4, listOf(
+                            TmdbEpisode(10, "Episode Title (1)", 10, 4),
+                            TmdbEpisode(11, "Episode Title (2)", 11, 4)
+                        ))
+                    )
+                )
+            )
+        )
+
+        val useCase = GenerateTableUseCase(cacheManager)
+        val result = useCase.generateTable()
+
+        // For a complete series, the episodes are hidden and only the header is shown
+        // So we need to check that the series is marked as complete (Vollständig)
+        val seriesHeaders = result.filterIsInstance<GenerateTableUseCase.SeriesHeaderRow>()
+            .filter { it.seriesName == "TestSeries (Vollständig)" }
+
+        assertEquals(1, seriesHeaders.size, "Expected one series header for TestSeries (Vollständig)")
+        assertTrue(seriesHeaders[0].seriesName.contains("Vollständig"), "Series should be marked as complete")
     }
+
+    @Test
+    fun `filesystem with Teil suffixes should match TMDB with numeric suffixes`() {
+        val cacheManager = createTestCacheManager(
+            scannedEpisodes = mapOf(
+                "subdir/TestSeries" to listOf(
+                    ScannedEpisode(4, 1, listOf(1), "S04E01 - Episode A (Teil 1).mkv"),
+                    ScannedEpisode(4, 2, listOf(2), "S04E02 - Episode B (Teil 2).mkv")
+                )
+            ),
+            tmdbSeries = mapOf(
+                99999 to TmdbSeries(
+                    id = 99999,
+                    name = "TestSeries",
+                    seasons = listOf(
+                        TmdbSeason(4, 4, listOf(
+                            TmdbEpisode(1, "Episode A (1)", 1, 4),
+                            TmdbEpisode(2, "Episode B (2)", 2, 4)
+                        ))
+                    )
+                )
+            )
+        )
+
+        val useCase = GenerateTableUseCase(cacheManager)
+        val result = useCase.generateTable()
+
+        val seriesHeaders = result.filterIsInstance<GenerateTableUseCase.SeriesHeaderRow>()
+            .filter { it.seriesName == "TestSeries (Vollständig)" }
+
+        assertEquals(1, seriesHeaders.size, "Expected one series header for TestSeries (Vollständig)")
+        assertTrue(seriesHeaders[0].seriesName.contains("Vollständig"), "Series should be marked as complete")
+    }
+
 
 
 }

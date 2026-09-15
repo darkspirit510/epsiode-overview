@@ -34,9 +34,16 @@ class GenerateTableUseCase(
              seriesToSubDir[normalizedSeriesName] = subDir  // Also store by normalized name
              val seriesData = allSeries.getOrPut(normalizedSeriesName) { SeriesTableData(mutableMapOf()) }
              
-             episodes.groupBy { it.seasonNumber }.forEach { (seasonNumber, seasonEpisodes) ->
-                 seriesData.seasons[seasonNumber] = seasonEpisodes.associateBy { episode -> episode.episodeNumber }
-             }
+              episodes.groupBy { it.seasonNumber }.forEach { (seasonNumber, seasonEpisodes) ->
+                  val episodeMap = mutableMapOf<Int, ScannedEpisode>()
+                  for (episode in seasonEpisodes) {
+                      val numbers = if (episode.episodeNumbers.size > 1) episode.episodeNumbers else listOf(episode.episodeNumber)
+                      for (epNum in numbers) {
+                          episodeMap[epNum] = episode
+                      }
+                  }
+                  seriesData.seasons[seasonNumber] = episodeMap
+              }
          }
 
              // Use temp directory if specified for tests, otherwise use real cache
@@ -132,24 +139,24 @@ class GenerateTableUseCase(
 
                         when {
                               filesystemEpisode != null && tmdbEpisode != null -> {
-                                  // Extract name from filename by removing SXXEYY pattern, file extension, and any leading/trailing separators
-                                  val fileNameWithoutPattern = filesystemEpisode.fileName
-                                      .replace(Regex("S\\d+E\\d+"), "")
-                                      .replace(Regex("^[\\s-]+"), "")
-                                      .replace(Regex("\\.[^.]*$"), "")  // Remove file extension
-                                      .replace(Regex("[\\s-]+"), " ")  // Replace multiple separators with single space
-                                      .trim()
+                                   // Extract name from filename by removing SXXEYY pattern, file extension, and any leading/trailing separators
+                                   val fileNameWithoutPattern = filesystemEpisode.fileName
+                                       .replace(Regex("S\\d+E\\d+(E\\d+)*"), "")
+                                       .replace(Regex("^[\\s-]+"), "")
+                                       .replace(Regex("\\.[^.]*$"), "")  // Remove file extension
+                                       .replace(Regex("[\\s-]+"), " ")  // Replace multiple separators with single space
+                                       .trim()
                                   
-                                  // Remove part suffixes from both names before normalization
-                                  val fsWithoutPart = removePartSuffix(fileNameWithoutPattern)
-                                  val tmdbWithoutPart = removePartSuffix(tmdbEpisode.name)
-                                  
-                                  val normFs = normalizeForComparison(fsWithoutPart)
-                                  val normTmdb = normalizeForComparison(tmdbWithoutPart)
-                                  
-                                  // Check if names match directly
-                                  val status = if (normFs.equals(normTmdb, ignoreCase = true)) {
-                                      EpisodeStatus.MATCHED
+                                   // Remove part suffixes from both names before normalization
+                                   val fsWithoutPart = removePartSuffix(fileNameWithoutPattern)
+                                   val tmdbWithoutPart = removePartSuffix(tmdbEpisode.name)
+                                   
+                                   val normFs = normalizeForComparison(fsWithoutPart)
+                                   val normTmdb = normalizeForComparison(tmdbWithoutPart)
+                                   
+                                   // Check if names match directly
+                                   val status = if (normFs.equals(normTmdb, ignoreCase = true)) {
+                                       EpisodeStatus.MATCHED
                                   } else {
                                       // Fallback: try comparing without spaces
                                       val normFsNoSpaces = normFs.replace(Regex("\\s"), "")
@@ -421,7 +428,8 @@ class GenerateTableUseCase(
      */
     private fun removePartSuffix(name: String): String {
         return name
-            .replace(Regex("""\s*\\(\d+\\)\s*$"""), "")
+            .replace(Regex("""\s*\(\d+\)\s*$"""), "")
+            .replace(Regex("""\s*\(Teil\s+\d+\)\s*$"""), "")
             .replace(Regex("""\s*Teil\s+\d+\s*$"""), "")
             .trim()
     }
