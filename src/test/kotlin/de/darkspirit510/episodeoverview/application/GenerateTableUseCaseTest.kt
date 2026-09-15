@@ -283,6 +283,93 @@ class GenerateTableUseCaseTest {
         assertTrue(seriesHeaders[0].seriesName.contains("Vollständig"), "Series should be marked as complete")
     }
 
+    @Test
+    fun `blacklisted episode should be excluded from table`() {
+        val cacheManager = createTestCacheManager(
+            scannedEpisodes = mapOf(
+                "subdir/BlacklistedSeries" to listOf(
+                    ScannedEpisode(1, 1, listOf(1), "S01E01 Episode 1.mp4"),
+                    ScannedEpisode(1, 2, listOf(2), "S01E02 Different Name.mp4"),
+                    ScannedEpisode(1, 3, listOf(3), "S01E03 Episode 3.mp4")
+                )
+            ),
+            tmdbSeries = mapOf(
+                111 to TmdbSeries(
+                    id = 111,
+                    name = "BlacklistedSeries",
+                    seasons = listOf(
+                        TmdbSeason(1, 1, listOf(
+                            TmdbEpisode(1, "Episode 1", 1, 1),
+                            TmdbEpisode(2, "Episode 2", 2, 1),
+                            TmdbEpisode(3, "Episode 3", 3, 1)
+                        ))
+                    )
+                )
+            ),
+            overriddenEpisodes = mapOf(
+                "BlacklistedSeries" to mapOf(
+                    1 to setOf(2)
+                )
+            )
+        )
 
+        val useCase = GenerateTableUseCase(cacheManager)
+        val result = useCase.generateTable()
+
+        val seriesRows = result.filterIsInstance<GenerateTableUseCase.SeriesTableRow>()
+            .filter { it.seriesName == "BlacklistedSeries" }
+
+        // Episode 2 is blacklisted, so only episodes 1 and 3 are shown
+        // Episode 1 matches, episode 3 matches, so series should be complete
+        val seriesHeaders = result.filterIsInstance<GenerateTableUseCase.SeriesHeaderRow>()
+            .filter { it.seriesName == "BlacklistedSeries (Vollständig)" }
+
+        assertEquals(1, seriesHeaders.size, "Should have series header marked as complete")
+        assertEquals(0, seriesRows.size, "Should have no season rows (episode 2 with mismatch is blacklisted)")
+    }
+
+    @Test
+    fun `blacklisted episode with mismatch should still show season`() {
+        val cacheManager = createTestCacheManager(
+            scannedEpisodes = mapOf(
+                "subdir/PartialSeries" to listOf(
+                    ScannedEpisode(1, 1, listOf(1), "S01E01 Episode 1.mp4"),
+                    ScannedEpisode(1, 2, listOf(2), "S01E02 Episode 2.mp4")
+                )
+            ),
+            tmdbSeries = mapOf(
+                222 to TmdbSeries(
+                    id = 222,
+                    name = "PartialSeries",
+                    seasons = listOf(
+                        TmdbSeason(1, 1, listOf(
+                            TmdbEpisode(1, "Episode 1", 1, 1),
+                            TmdbEpisode(2, "Different Episode 2", 2, 1),
+                            TmdbEpisode(3, "Episode 3", 3, 1)
+                        ))
+                    )
+                )
+            ),
+            overriddenEpisodes = mapOf(
+                "PartialSeries" to mapOf(
+                    1 to setOf(3)
+                )
+            )
+        )
+
+        val useCase = GenerateTableUseCase(cacheManager)
+        val result = useCase.generateTable()
+
+        val seriesRows = result.filterIsInstance<GenerateTableUseCase.SeriesTableRow>()
+            .filter { it.seriesName == "PartialSeries" }
+
+        // Episode 3 is blacklisted, so only episodes 1 and 2 are shown
+        // Episode 1 matches, episode 2 has a mismatch, so season should be shown
+        assertEquals(1, seriesRows.size, "Should have one season row")
+        val episodes = seriesRows[0].episodes
+        assertEquals(2, episodes.size, "Should have 2 episodes (episode 3 is blacklisted)")
+        assertEquals(EpisodeStatus.MATCHED, episodes[0].status, "Episode 1 should match")
+        assertEquals(EpisodeStatus.NAME_MISMATCH, episodes[1].status, "Episode 2 should have name mismatch")
+    }
 
 }

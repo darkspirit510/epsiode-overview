@@ -130,9 +130,13 @@ class GenerateTableUseCase(
                    
                     val allEpisodeNumbers = (filesystemEpisodes.keys + filteredTmdbEpisodes.keys).sorted()
 
-                   if (allEpisodeNumbers.isEmpty()) return@flatMap listOf()
+                    if (allEpisodeNumbers.isEmpty()) return@flatMap listOf()
 
-                   val episodes = allEpisodeNumbers.map { episodeNumber ->
+                    val episodes = allEpisodeNumbers
+                        .filter { episodeNumber ->
+                            !cacheManager.isEpisodeOverridden(displayName, seasonNumber, episodeNumber)
+                        }
+                        .map { episodeNumber ->
                        val filesystemEpisode = filesystemEpisodes[episodeNumber]
                        // Use filtered TMDB episodes to exclude episodes beyond cut point
                        val tmdbEpisode = filteredTmdbEpisodes[episodeNumber]
