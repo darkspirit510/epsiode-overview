@@ -63,7 +63,9 @@ class CacheManager(
         
         stream.bufferedReader().forEachLine { line ->
             val trimmed = line.trim()
-            if (trimmed.isEmpty() || trimmed.startsWith("#")) return@forEachLine
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                return@forEachLine
+            }
             
             // Match full = ["series1", "series2"]
             val fullMatch = """full\s*=\s*\[(.*?)\]""".toRegex().find(trimmed)
@@ -210,7 +212,9 @@ class CacheManager(
         val overrides = mutableMapOf<String, Int>()
         stream.bufferedReader().forEachLine { line ->
             val trimmed = line.trim()
-            if (trimmed.isEmpty() || trimmed.startsWith("#")) return@forEachLine
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                return@forEachLine
+            }
             val parts = trimmed.split(":", limit = 2)
             if (parts.size == 2) {
                 val seriesName = parts[0].trim()
@@ -262,7 +266,9 @@ class CacheManager(
             migrateOldCache()
         }
         
-        if (!episodesCacheFile.exists()) return null
+        if (!episodesCacheFile.exists()) {
+            return null
+        }
         
         try {
             val allData = mapper.readValue(episodesCacheFile, 
@@ -278,7 +284,9 @@ class CacheManager(
             migrateOldCache()
         }
         
-        if (!episodesCacheFile.exists()) return emptyMap()
+        if (!episodesCacheFile.exists()) {
+            return emptyMap()
+        }
         
         try {
             return mapper.readValue(episodesCacheFile, 

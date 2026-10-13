@@ -44,7 +44,9 @@ class FileSystemScanner {
                      if (seriesName != null) {
                          val seasonNumber = file.name.substring(1).toIntOrNull() ?: return@forEach
                          // Skip season 0 (S00) - specials/extras
-                         if (seasonNumber == 0) return@forEach
+                         if (seasonNumber == 0) {
+                             return@forEach
+                         }
                          val episodes = scanSeasonDirectory(file)
                          if (episodes.isNotEmpty()) {
                              val seriesSeasons = result.getOrPut(seriesName) { mutableMapOf() }
@@ -87,7 +89,9 @@ class FileSystemScanner {
             directory
         }
 
-        if (seriesDir == null || !seriesDir.exists()) return null
+        if (seriesDir == null || !seriesDir.exists()) {
+            return null
+        }
 
         // The series name is always the immediate parent directory of the season directory
         // or the directory containing the episode files
@@ -116,7 +120,9 @@ class FileSystemScanner {
 
           val seasonNumber = match.groupValues[1].toInt()
           // Skip season 0 (S00) - specials/extras
-          if (seasonNumber == 0) return null
+          if (seasonNumber == 0) {
+              return null
+          }
           
           // Parse all episode numbers from the matched pattern
           val episodeNumbers = extractAllEpisodeNumbers(match.value)

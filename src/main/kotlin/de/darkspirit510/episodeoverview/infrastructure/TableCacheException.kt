@@ -1,6 +1,8 @@
 package de.darkspirit510.episodeoverview.infrastructure
 
-class TableCacheException(message: String) : Exception(message) {
+class TableCacheException(
+    message: String
+) : Exception(message) {
     companion object {
         fun corruptedCacheFile(cacheFilePath: String): TableCacheException {
             return TableCacheException(

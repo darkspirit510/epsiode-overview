@@ -3,7 +3,9 @@ package de.darkspirit510.episodeoverview.presentation
 import de.darkspirit510.episodeoverview.application.GenerateTableUseCase
 import de.darkspirit510.episodeoverview.domain.EpisodeStatus
 
-class HtmlGenerator(private val maxEpisodesPerSeason: Int = 75) {
+class HtmlGenerator(
+    private val maxEpisodesPerSeason: Int = 75
+) {
 
        fun generateHtml(tableRows: List<GenerateTableUseCase.TableRow>): String {
            // First, find the maximum number of episodes across all series
@@ -28,7 +30,12 @@ class HtmlGenerator(private val maxEpisodesPerSeason: Int = 75) {
             }
            
             // Calculate total columns for colspan: season column + episode columns + overflow column if needed
-            val totalDisplayColumns = 1 + maxEpisodesPerSeason + (if (hasOverflow) 1 else 0)
+            val overflowColumns = if (hasOverflow) {
+                1
+            } else {
+                0
+            }
+            val totalDisplayColumns = 1 + maxEpisodesPerSeason + overflowColumns
             
             val bodyRows = buildString {
                 tableRows.forEach { row ->

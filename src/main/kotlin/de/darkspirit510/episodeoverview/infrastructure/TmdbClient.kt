@@ -81,7 +81,9 @@ class TmdbClient(
         val seasons = seasonsResponse.mapNotNull { seasonMap ->
             val seasonNumber = seasonMap["season_number"] as? Int ?: return@mapNotNull null
             // Skip season 0 (S00) - specials/extras
-            if (seasonNumber == 0) return@mapNotNull null
+            if (seasonNumber == 0) {
+                return@mapNotNull null
+            }
             val seasonId = seasonMap["id"] as? Int ?: return@mapNotNull null
             val episodes = getSeasonEpisodes(seriesId, seasonNumber)
             TmdbSeason(seasonId, seasonNumber, episodes)

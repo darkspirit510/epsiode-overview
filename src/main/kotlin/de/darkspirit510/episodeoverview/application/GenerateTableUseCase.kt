@@ -37,7 +37,11 @@ class GenerateTableUseCase(
               episodes.groupBy { it.seasonNumber }.forEach { (seasonNumber, seasonEpisodes) ->
                   val episodeMap = mutableMapOf<Int, ScannedEpisode>()
                   for (episode in seasonEpisodes) {
-                      val numbers = if (episode.episodeNumbers.size > 1) episode.episodeNumbers else listOf(episode.episodeNumber)
+                      val numbers = if (episode.episodeNumbers.size > 1) {
+                          episode.episodeNumbers
+                      } else {
+                          listOf(episode.episodeNumber)
+                      }
                       for (epNum in numbers) {
                           episodeMap[epNum] = episode
                       }
@@ -59,10 +63,16 @@ class GenerateTableUseCase(
              // Extract series ID and filesystem name from filename (format: "ID-filesystem-name.json" or "ID-tmdb-name.json")
              val fileNameParts = file.nameWithoutExtension.split("-", limit = 2)
              val seriesId = fileNameParts.firstOrNull()?.toIntOrNull() ?: return@forEach
-             val filesystemNameFromFile = if (fileNameParts.size > 1) fileNameParts[1] else null
+             val filesystemNameFromFile = if (fileNameParts.size > 1) {
+                 fileNameParts[1]
+             } else {
+                 null
+             }
              
              // Skip if we already processed this TMDB ID
-             if (processedTmdbIds.contains(seriesId)) return@forEach
+             if (processedTmdbIds.contains(seriesId)) {
+                 return@forEach
+             }
              processedTmdbIds.add(seriesId)
              
              val tmdbSeries = cacheManager.loadTmdbSeries(seriesId) ?: return@forEach
@@ -130,7 +140,9 @@ class GenerateTableUseCase(
                    
                     val allEpisodeNumbers = (filesystemEpisodes.keys + filteredTmdbEpisodes.keys).sorted()
 
-                    if (allEpisodeNumbers.isEmpty()) return@flatMap listOf()
+                    if (allEpisodeNumbers.isEmpty()) {
+                        return@flatMap listOf()
+                    }
 
                     val episodes = allEpisodeNumbers
                         .filter { episodeNumber ->
@@ -176,7 +188,11 @@ class GenerateTableUseCase(
                            filesystemEpisode != null -> {
                                // For Option A (fuzzing enabled): filesystem episodes without TMDB matches are considered MATCHED
                                // because we prefer filesystem structure and hide TMDB episodes beyond cut points
-                               val status = if (useFuzzing) EpisodeStatus.MATCHED else EpisodeStatus.FILESYSTEM_ONLY
+                               val status = if (useFuzzing) {
+                                   EpisodeStatus.MATCHED
+                               } else {
+                                   EpisodeStatus.FILESYSTEM_ONLY
+                               }
                                EpisodeTableCell(episodeNumber, status, filesystemEpisode.fileName, null)
                            }
                             else -> {
@@ -222,7 +238,11 @@ class GenerateTableUseCase(
                // Add series header and season rows to subDir group
                val groupForSubDir = subDirGroups.getOrPut(subDir) { mutableListOf() }
                if (seriesRows.isNotEmpty()) {
-                   val seriesDisplayName = if (allSeasonsComplete) "$displayName (Vollständig)" else displayName
+                   val seriesDisplayName = if (allSeasonsComplete) {
+                       "$displayName (Vollständig)"
+                   } else {
+                       displayName
+                   }
                    groupForSubDir.add(SeriesHeaderRow(seriesDisplayName))
                    groupForSubDir.addAll(filteredSeriesRows)
                }
@@ -242,7 +262,9 @@ class GenerateTableUseCase(
      }
 
     private fun normalizeName(name: String?): String {
-         if (name == null) return ""
+         if (name == null) {
+             return ""
+         }
          return name
              .replace(Regex("\\.[^.]+"), "")
              .lowercase()
@@ -404,7 +426,9 @@ class GenerateTableUseCase(
      * Check if two episode names match using a simpler normalization that preserves numbers
      */
     private fun areNamesMatching(name1: String, name2: String): Boolean {
-        if (name1.isEmpty() || name2.isEmpty()) return false
+        if (name1.isEmpty() || name2.isEmpty()) {
+            return false
+        }
         
         val norm1 = normalizeForSeasonSplit(name1)
         val norm2 = normalizeForSeasonSplit(name2)
@@ -440,9 +464,13 @@ class GenerateTableUseCase(
 
     sealed class TableRow
     
-    data class SubDirHeaderRow(val subDir: String) : TableRow()
+    data class SubDirHeaderRow(
+        val subDir: String
+    ) : TableRow()
     
-    data class SeriesHeaderRow(val seriesName: String) : TableRow()
+    data class SeriesHeaderRow(
+        val seriesName: String
+    ) : TableRow()
     
     data class SeriesTableRow(
         val seriesName: String,
