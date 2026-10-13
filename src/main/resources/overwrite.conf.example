@@ -1,6 +1,6 @@
 # Manual TMDB ID overrides
 # Format: Series Name:TheMovieDB ID
-# Example: Avatar:12345
+# Example: Example Series:12345
 
 # Add your custom TMDB ID mappings here
 # This is useful when the automatic matching doesn't find the correct series

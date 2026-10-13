@@ -40,7 +40,7 @@ fun Application.module() {
     val baseDir = System.getenv("BASE_DIR") 
         ?: classpathProps["baseDir"]
         ?: config.propertyOrNull("baseDir")?.getString()
-        ?: "/Volumes/Medien/"
+        ?: throw IllegalStateException("Base directory is required. Set BASE_DIR environment variable or baseDir in application.conf")
     
     val subDirsRaw = System.getenv("SUB_DIRS") 
         ?: classpathProps["subDirs"]
