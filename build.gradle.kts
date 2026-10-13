@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "1.9.22"
+    alias(libs.plugins.kotlin.jvm)
     application
 }
 
@@ -8,19 +8,19 @@ repositories {
 }
 
 dependencies {
-    implementation("io.ktor:ktor-server-core:2.3.12")
-    implementation("io.ktor:ktor-server-netty:2.3.12")
-    implementation("io.ktor:ktor-server-config-yaml:2.3.12")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.1")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-    implementation("org.slf4j:slf4j-api:2.0.12")
-    implementation("ch.qos.logback:logback-classic:1.5.3")
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.netty)
+    implementation(libs.ktor.server.config.yaml)
+    implementation(libs.jackson.module.kotlin)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging.interceptor)
+    implementation(libs.slf4j.api)
+    implementation(libs.logback.classic)
 
     testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.0")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.10.0")
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 application {
@@ -39,10 +39,8 @@ distributions {
     }
 }
 
-
-
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 tasks.test {
