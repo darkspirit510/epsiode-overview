@@ -6,6 +6,8 @@ okhttp = "4.12.0"
 slf4j = "2.0.12"
 logback = "1.5.3"
 junit = "5.10.0"
+konsist = "0.17.3"
+detekt = "2.0.0-alpha.6"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
@@ -19,6 +21,9 @@ logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "lo
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
+detekt-rules-ktlint-wrapper = { module = "dev.detekt:detekt-rules-ktlint-wrapper", version.ref = "detekt" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+detekt = { id = "dev.detekt", version.ref = "detekt" }

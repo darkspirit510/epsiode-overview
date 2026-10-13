@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.detekt)
     application
 }
 
@@ -17,10 +18,17 @@ dependencies {
     implementation(libs.slf4j.api)
     implementation(libs.logback.classic)
 
+    testImplementation(libs.konsist)
     testImplementation(kotlin("test"))
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
+
+    detektPlugins(libs.detekt.rules.ktlint.wrapper)
+}
+
+detekt {
+    buildUponDefaultConfig = false
 }
 
 application {
@@ -45,4 +53,23 @@ kotlin {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+val checkIdentifiable by tasks.registering(Exec::class) {
+    description = "Fails on series names, tokens, usernames or local paths in files that would be committed"
+    commandLine("python3", "scripts/check_identifiable.py", "--all")
+}
+
+tasks.check {
+    dependsOn(checkIdentifiable)
+}
+
+val installGitHooks by tasks.registering(Exec::class) {
+    description = "Points git at .githooks so the pre-commit checks run"
+    onlyIf { file(".git").exists() }
+    commandLine("git", "config", "core.hooksPath", ".githooks")
+}
+
+tasks.compileKotlin {
+    dependsOn(installGitHooks)
 }
