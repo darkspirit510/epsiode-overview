@@ -1,4 +1,0 @@
-# Generic words that are also series names in someone's library; one per line, matched case-insensitively.
-# Only add plain words here, never a real series title that is not a generic term.
-blacklist
-split

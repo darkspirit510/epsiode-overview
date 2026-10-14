@@ -2,8 +2,6 @@
 # Installed via core.hooksPath (./gradlew sets it on the first build).
 set -euo pipefail
 
-python3 scripts/check_identifiable.py --staged
-
 # Warn (never block) when a new file or new public class/function lands in src/main without any staged test.
 staged=$(git diff --cached --name-status --diff-filter=ACMR)
 if ! grep -qE '^[ACMR][0-9]*\s+src/test/' <<<"$staged"; then

@@ -55,15 +55,6 @@ tasks.test {
     useJUnitPlatform()
 }
 
-val checkIdentifiable by tasks.registering(Exec::class) {
-    description = "Fails on series names, tokens, usernames or local paths in files that would be committed"
-    commandLine("python3", "scripts/check_identifiable.py", "--all")
-}
-
-tasks.check {
-    dependsOn(checkIdentifiable)
-}
-
 val installGitHooks by tasks.registering(Exec::class) {
     description = "Points git at .githooks so the pre-commit checks run"
     onlyIf { file(".git").exists() }

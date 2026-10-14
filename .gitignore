@@ -76,7 +76,3 @@ fuzz_episodes.conf
 # logback.xml
 
 cache/*
-
-# Local terms for scripts/check_identifiable.py
-identifiable.local.txt
-__pycache__/
