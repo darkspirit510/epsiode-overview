@@ -1,0 +1,33 @@
+# Only the agreed style rules are active: braces, no trailing commas, one constructor property per line.
+# MultiLineIfElse adds autocorrect for multi-line if/else braces; StatementWrapping keeps a body off its brace line.
+# Gap: single-line braceless for/while loops pass, since MandatoryBracesLoops only flags multi-line loops.
+# Lint: ./gradlew detekt  Autofix: ./gradlew detekt --auto-correct (commas and wrapping; single-line if braces stay manual)
+
+style:
+  BracesOnIfStatements:
+    active: true
+    singleLine: 'always'
+    multiLine: 'always'
+  MandatoryBracesLoops:
+    active: true
+
+ktlint:
+  autoCorrect: true
+  TrailingCommaOnCallSite:
+    active: true
+    autoCorrect: true
+    useTrailingCommaOnCallSite: false
+  TrailingCommaOnDeclarationSite:
+    active: true
+    autoCorrect: true
+    useTrailingCommaOnDeclarationSite: false
+  ClassSignature:
+    active: true
+    autoCorrect: true
+    forceMultilineWhenParameterCountGreaterOrEqualThan: '1'
+  MultiLineIfElse:
+    active: true
+    autoCorrect: true
+  StatementWrapping:
+    active: true
+    autoCorrect: true

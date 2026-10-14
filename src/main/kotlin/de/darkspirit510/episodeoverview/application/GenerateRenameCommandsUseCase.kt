@@ -107,7 +107,9 @@ class GenerateRenameCommandsUseCase(
     }
     
     private fun areNamesMatching(fsName: String, tmdbName: String): Boolean {
-        if (fsName.isEmpty() || tmdbName.isEmpty()) return false
+        if (fsName.isEmpty() || tmdbName.isEmpty()) {
+            return false
+        }
         
         val normFs = normalizeForComparison(fsName)
         val normTmdb = normalizeForComparison(tmdbName)

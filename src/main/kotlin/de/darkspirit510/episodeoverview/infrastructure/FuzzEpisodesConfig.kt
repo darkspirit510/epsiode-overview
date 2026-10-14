@@ -72,7 +72,12 @@ class FuzzEpisodesConfig {
             cachedConfig = seriesNames
             
             // Log loaded fuzz series (similar to other config logging)
-            println("Loaded fuzz episodes: ${if (seriesNames.isNotEmpty()) seriesNames.joinToString(", ") else "none"}")
+            val loadedNames = if (seriesNames.isNotEmpty()) {
+                seriesNames.joinToString(", ")
+            } else {
+                "none"
+            }
+            println("Loaded fuzz episodes: $loadedNames")
             
             return seriesNames
         }

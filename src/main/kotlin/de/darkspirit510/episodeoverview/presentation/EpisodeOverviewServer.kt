@@ -17,6 +17,7 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 
+@Suppress("ExtensionFunction") // Ktor modules are extensions on Application
 fun Application.module() {
     // Load configuration - prioritize environment variables, then config file
     // Try to load from classpath first (for IntelliJ), then fall back to environment.config

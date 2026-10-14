@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Installed via core.hooksPath (./gradlew sets it on the first build).
+set -euo pipefail
+
+# Warn (never block) when a new file or new public class/function lands in src/main without any staged test.
+staged=$(git diff --cached --name-status --diff-filter=ACMR)
+if ! grep -qE '^[ACMR][0-9]*\s+src/test/' <<<"$staged"; then
+    new_files=$(grep -E '^A\s+src/main/' <<<"$staged" || true)
+    new_api=$(git diff --cached -U0 -- src/main \
+        | grep -E '^\+\s*((public|data|sealed|enum|abstract|open|value|annotation|override|suspend|inline|operator)\s+)*(class|interface|object|fun)\s' \
+        || true)
+    if [[ -n "$new_files" || -n "$new_api" ]]; then
+        echo "⚠️  New code in src/main but no test staged. TDD: write the failing test first." >&2
+    fi
+fi
